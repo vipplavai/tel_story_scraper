@@ -3,16 +3,11 @@ import json
 import sys
 import time
 from datetime import datetime
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+import requests
+from bs4 import BeautifulSoup
 
-# Directory for temporary storage
+# Directory for temporary storage (Render does not allow permanent storage)
 TEMP_DIR = "/tmp/stories"
-
-# Ensure TEMP_DIR exists
 os.makedirs(TEMP_DIR, exist_ok=True)
 
 # Function to delete files older than 24 hours
@@ -25,27 +20,29 @@ def cleanup_old_files():
             if file_age > 24 * 3600:  # 24 hours
                 os.remove(file_path)
 
-# Function to scrape a story
+# Function to scrape a story using BeautifulSoup
 def scrape_story(url, username):
-    # Setup Selenium
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-
     try:
-        driver.get(url)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+        
+        # Fetch the webpage
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            print(f"Error: Unable to access {url}")
+            return None
+
+        # Parse the HTML
+        soup = BeautifulSoup(response.text, "html.parser")
 
         # Extract Title
-        title_element = driver.find_element(By.CSS_SELECTOR, "h2.title-target.text-left.d-none.d-sm-block")
-        title = title_element.text.strip()
+        title_element = soup.select_one("h2.title-target.text-left.d-none.d-sm-block")
+        title = title_element.text.strip() if title_element else "Untitled"
 
-        # Extract Content
-        content_div = driver.find_element(By.CSS_SELECTOR, "div.content-container.avoid-text-copy.story")
-        paragraphs = content_div.find_elements(By.TAG_NAME, "p")
+        # Extract Content (all <p> inside the content-container div)
+        content_div = soup.select_one("div.content-container.avoid-text-copy.story")
+        paragraphs = content_div.find_all("p") if content_div else []
         content = "\n".join([p.text.strip() for p in paragraphs if p.text.strip()])
 
         # Prepare JSON Data
@@ -65,16 +62,12 @@ def scrape_story(url, username):
         with open(json_path, "w", encoding="utf-8") as json_file:
             json.dump(story_data, json_file, ensure_ascii=False, indent=4)
 
-        print(f"Story saved successfully: {json_path}")
-        return json_path  # Return file path for retrieval
+        print(json.dumps({"file_path": json_path}))  # Output JSON path for app.py to read
+        return json_path  # Return file path
 
     except Exception as e:
         print(f"Error occurred: {e}")
         return None
-
-    finally:
-        driver.quit()
-
 
 # If script is run directly with URL and username arguments
 if __name__ == "__main__":
@@ -82,6 +75,4 @@ if __name__ == "__main__":
         url = sys.argv[1]
         username = sys.argv[2]
         cleanup_old_files()  # Delete old files before saving new one
-        scraped_file = scrape_story(url, username)
-        if scraped_file:
-            print(json.dumps({"file_path": scraped_file}))
+        scrape_story(url, username)

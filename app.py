@@ -2,7 +2,6 @@ import streamlit as st
 import subprocess
 import json
 import os
-import time
 from datetime import datetime
 
 # Set Page Config
@@ -35,7 +34,7 @@ if st.button("Scrape"):
         with st.spinner("Scraping the story... Please wait."):
             # Run scraping script with username argument
             result = subprocess.run(
-                ["python3", SCRAPER_SCRIPT, url, username],  # Use absolute path
+                ["python3", SCRAPER_SCRIPT, url, username], 
                 capture_output=True,
                 text=True
             )
@@ -61,8 +60,8 @@ if st.button("Scrape"):
                     else:
                         st.error("No valid file path returned after scraping.")
 
-                except json.JSONDecodeError as json_error:
-                    st.error(f"Failed to parse scraped story. JSON file might be incomplete.")
+                except json.JSONDecodeError:
+                    st.error("Failed to parse scraped story. JSON file might be incomplete.")
             else:
                 st.error(f"Scraping failed. Error: {result.stderr}")
     else:
