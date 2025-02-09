@@ -16,6 +16,9 @@ if "scraped_data" not in st.session_state:
 if "username" not in st.session_state:
     st.session_state.username = ""
 
+# Get absolute path for `stories_scrape.py`
+SCRAPER_SCRIPT = os.path.abspath("stories_scrape.py")  # Ensure it's in the same directory
+
 # Title
 st.title("📖 Telugu Story Scraper")
 
@@ -32,7 +35,7 @@ if st.button("Scrape"):
         with st.spinner("Scraping the story... Please wait."):
             # Run scraping script with username argument
             result = subprocess.run(
-                ["python3", "/home/enma/data/stories_scrape.py", url, username],
+                ["python3", SCRAPER_SCRIPT, url, username],  # Use absolute path
                 capture_output=True,
                 text=True
             )
